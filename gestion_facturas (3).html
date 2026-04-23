@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlmacénPro — Gestión de Facturas</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#cbd5e1;min-height:100vh}
+.app{min-height:100vh}
+.header{background:#020617;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:10}
+.logo{font-size:16px;font-weight:600;color:#f1f5f9;letter-spacing:.3px}.logo span{color:#3b82f6}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#334155;display:inline-block;margin-left:8px;transition:background .3s;vertical-align:middle}
+.sync-dot.ok{background:#4ade80}.sync-dot.sync{background:#fbbf24}.sync-dot.err{background:#f87171}
+.role-pill{display:flex;align-items:center;gap:8px}
+.rpill{font-size:11px;padding:4px 14px;border-radius:99px;font-weight:600;letter-spacing:.3px}
+.rpill-editor{background:#1e3a5f;color:#60a5fa}
+.rpill-viewer{background:#14532d;color:#4ade80}
+.lock-btn{padding:6px 14px;border-radius:7px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s}
+.lock-btn:hover{background:#1e293b;color:#f1f5f9}
+.main{padding:20px 24px;max-width:1400px;margin:0 auto}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:#1e293b;border-radius:12px;padding:16px 18px;border:1px solid #334155}
+.kpi-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.kpi-num{font-size:28px;font-weight:700;line-height:1}
+.kpi-sub{font-size:10px;margin-top:5px;color:#64748b}
+.kpi-bar{height:3px;border-radius:2px;margin-top:10px;opacity:.7}
+.kpi-total .kpi-num{color:#818cf8}.kpi-total .kpi-bar{background:#818cf8}
+.kpi-verde .kpi-num{color:#4ade80}.kpi-verde .kpi-bar{background:#4ade80}
+.kpi-amarillo .kpi-num{color:#fbbf24}.kpi-amarillo .kpi-bar{background:#fbbf24}
+.kpi-rojo .kpi-num{color:#f87171}.kpi-rojo .kpi-bar{background:#f87171}
+.kpi-legal .kpi-num{color:#60a5fa}.kpi-legal .kpi-bar{background:#60a5fa}
+.transit-bar{background:#1e293b;border-radius:12px;padding:16px 18px;border:1px solid #334155;margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.transit-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;min-width:120px}
+.transit-segments{display:flex;flex:1;min-width:200px;height:30px;border-radius:8px;overflow:hidden;gap:2px}
+.seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.seg-green{background:#22c55e}.seg-yellow{background:#f59e0b}.seg-orange{background:#f97316}.seg-red{background:#ef4444}
+.transit-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.controls{display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:200px;position:relative}
+.search-wrap input{width:100%;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 12px 9px 38px;color:#f1f5f9;font-size:13px;transition:border-color .15s}
+.search-wrap input:focus{outline:none;border-color:#3b82f6}
+.search-wrap input::placeholder{color:#475569}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#475569;font-size:15px}
+.filter-btns{display:flex;gap:6px;flex-wrap:wrap}
+.fbtn{padding:8px 14px;border-radius:8px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s}
+.fbtn:hover{border-color:#475569;color:#f1f5f9}
+.fbtn.active{color:#f1f5f9;border-color:#475569;background:#1e293b}
+.fbtn.f-verde.active{background:#14532d;border-color:#22c55e;color:#4ade80}
+.fbtn.f-amarillo.active{background:#451a03;border-color:#f59e0b;color:#fbbf24}
+.fbtn.f-rojo.active{background:#450a0a;border-color:#ef4444;color:#f87171}
+.fbtn.f-legal.active{background:#1e3a5f;border-color:#3b82f6;color:#60a5fa}
+.new-btn{padding:8px 18px;border-radius:8px;background:#3b82f6;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.new-btn:hover{background:#2563eb}
+.table-wrap{background:#1e293b;border-radius:12px;border:1px solid #334155;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
+thead{background:#0f172a}
+th{padding:11px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;font-weight:600;border-bottom:1px solid #334155;white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#243044;transition:background .1s}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.st-verde{background:#14532d;color:#4ade80}.st-verde .badge-dot{background:#4ade80}
+.st-amarillo{background:#451a03;color:#fbbf24}.st-amarillo .badge-dot{background:#fbbf24}
+.st-rojo{background:#450a0a;color:#f87171}.st-rojo .badge-dot{background:#f87171}
+.st-legal{background:#1e3a5f;color:#60a5fa}.st-legal .badge-dot{background:#60a5fa}
+.tipo-badge{display:inline-block;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:600;background:#0f172a;border:1px solid #334155;color:#94a3b8;white-space:nowrap}
+.days-bar{display:flex;align-items:center;gap:8px}
+.bar-track{width:72px;height:5px;background:#334155;border-radius:3px;overflow:hidden;flex-shrink:0}
+.bar-fill{height:100%;border-radius:3px}
+.days-num{font-size:11px;font-weight:700;min-width:22px}
+.action-btn{padding:4px 10px;border-radius:5px;font-size:10px;border:1px solid #334155;background:transparent;color:#94a3b8;cursor:pointer;transition:all .15s;white-space:nowrap}
+.action-btn:hover{background:#334155;color:#f1f5f9}
+.legal-btn{border-color:#1d4ed8;color:#60a5fa}.legal-btn:hover{background:#1e3a5f}
+.del-btn{color:#f87171;border-color:#450a0a}.del-btn:hover{background:#450a0a}
+.link-bar{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.link-input{flex:1;min-width:180px;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:8px 10px;color:#94a3b8;font-size:11px}
+.copy-btn{padding:7px 16px;border-radius:6px;background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;font-size:11px;cursor:pointer;white-space:nowrap}
+.copy-btn:hover{background:#1e40af}
+.viewer-banner{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.viewer-banner span{font-size:12px;color:#64748b}
+.viewer-banner button{font-size:12px;padding:5px 14px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;cursor:pointer}
+.viewer-banner button:hover{background:#1e293b;color:#f1f5f9}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+.modal{background:#1e293b;border-radius:14px;border:1px solid #334155;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal-sm{max-width:360px}
+.modal-header{padding:20px 22px 16px;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:600;color:#f1f5f9}
+.close-btn{background:transparent;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1}
+.close-btn:hover{color:#f1f5f9}
+.modal-body{padding:20px 22px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;font-weight:500}
+.field input,.field select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 13px;color:#f1f5f9;font-size:13px;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:#3b82f6}
+.field select option{background:#1e293b}
+.modal-footer{padding:16px 22px;border-top:1px solid #334155;display:flex;gap:8px;justify-content:flex-end}
+.btn-cancel{padding:9px 18px;border-radius:8px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer}
+.btn-cancel:hover{background:#1e293b;color:#f1f5f9}
+.btn-save{padding:9px 20px;border-radius:8px;background:#3b82f6;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer}
+.btn-save:hover{background:#2563eb}
+.error-msg{color:#f87171;font-size:12px;margin-top:8px;display:none}
+.toast{position:fixed;bottom:24px;right:24px;color:#fff;padding:11px 20px;border-radius:9px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.empty{text-align:center;padding:50px;color:#475569;font-size:13px}
+.pw-icon{font-size:32px;text-align:center;margin-bottom:14px}
+.loading-screen{position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px}
+.logo-big{font-size:22px;font-weight:700;color:#f1f5f9}.logo-big span{color:#3b82f6}
+.spinner{width:32px;height:32px;border:3px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-size:13px;color:#475569}
+.section-sep{border:none;border-top:1px solid #1e293b;margin:24px 0}
+.section-title2{font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
+.avg-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:600px){.avg-summary{grid-template-columns:repeat(2,1fr)}}
+.avg-card{background:#1e293b;border-radius:12px;padding:14px 16px;border:1px solid #334155}
+.avg-card-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px}
+.avg-card-val{font-size:24px;font-weight:700;line-height:1}
+.avg-card-sub{font-size:10px;margin-top:4px;color:#64748b}
+.avg-chart-wrap{background:#1e293b;border-radius:12px;padding:18px;border:1px solid #334155;margin-bottom:18px}
+.avg-legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;font-size:12px;color:#94a3b8}
+.avg-leg-item{display:flex;align-items:center;gap:5px}
+.avg-leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.avg-table-wrap{background:#1e293b;border-radius:12px;border:1px solid #334155;overflow-x:auto;margin-bottom:8px}
+.avg-table{width:100%;border-collapse:collapse;font-size:12px;min-width:500px}
+.avg-table thead{background:#0f172a}
+.avg-table th{padding:10px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;font-weight:600;border-bottom:1px solid #334155;white-space:nowrap}
+.avg-table td{padding:11px 14px;border-bottom:1px solid #0f172a;color:#cbd5e1;vertical-align:middle}
+.avg-table tr:last-child td{border-bottom:none}
+.avg-table tr:hover td{background:#243044}
+.apill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:600}
+.apill-ok{background:#14532d;color:#4ade80}
+.apill-warn{background:#451a03;color:#fbbf24}
+.apill-bad{background:#450a0a;color:#f87171}
+.abar-row{display:flex;align-items:center;gap:8px}
+.abar-track{width:80px;height:5px;background:#334155;border-radius:3px;overflow:hidden;flex-shrink:0}
+.abar-fill{height:100%;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading-screen">
+  <div class="logo-big">Almacén<span>Pro</span></div>
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">Conectando con la base de datos...</div>
+</div>
+
+<div class="app" id="app-content" style="display:none">
+<div class="header">
+  <div class="logo">
+    Almacén<span>Pro</span> — Gestión de Facturas
+    <span class="sync-dot" id="sync-dot" title="Estado de conexión"></span>
+  </div>
+  <div class="role-pill">
+    <span class="rpill" id="role-pill">...</span>
+    <button class="lock-btn" id="lock-btn" onclick="handleLockBtn()"></button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="viewer-banner" class="viewer-banner" style="display:none">
+    <span>&#128274; Modo visualizador — solo lectura.</span>
+    <button onclick="openLoginModal()">Iniciar sesión como editor</button>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi kpi-total"><div class="kpi-label">Total facturas</div><div class="kpi-num" id="k-total">0</div><div class="kpi-bar"></div></div>
+    <div class="kpi kpi-verde"><div class="kpi-label">A tiempo (&le;1 día)</div><div class="kpi-num" id="k-verde">0</div><div class="kpi-sub">semáforo verde</div><div class="kpi-bar"></div></div>
+    <div class="kpi kpi-amarillo"><div class="kpi-label">En atención (2 días)</div><div class="kpi-num" id="k-amarillo">0</div><div class="kpi-sub">semáforo amarillo</div><div class="kpi-bar"></div></div>
+    <div class="kpi kpi-rojo"><div class="kpi-label">Vencidas (&gt;3 días)</div><div class="kpi-num" id="k-rojo">0</div><div class="kpi-sub">semáforo rojo</div><div class="kpi-bar"></div></div>
+    <div class="kpi kpi-legal"><div class="kpi-label">Legalizadas</div><div class="kpi-num" id="k-legal">0</div><div class="kpi-bar"></div></div>
+  </div>
+
+  <div class="transit-bar">
+    <div class="transit-label">Días en tránsito</div>
+    <div class="transit-segments" id="transit-seg"></div>
+    <div class="transit-legend">
+      <div class="leg"><div class="dot" style="background:#22c55e"></div>1 día</div>
+      <div class="leg"><div class="dot" style="background:#f59e0b"></div>2 días</div>
+      <div class="leg"><div class="dot" style="background:#f97316"></div>3 días</div>
+      <div class="leg"><div class="dot" style="background:#ef4444"></div>4+ días</div>
+    </div>
+  </div>
+
+  <div id="link-bar" class="link-bar">
+    <span style="font-size:11px;color:#64748b;white-space:nowrap">Enlace solo lectura:</span>
+    <input class="link-input" id="share-link" readonly value="Haz clic en 'Copiar enlace'">
+    <button class="copy-btn" onclick="copyLink()">Copiar enlace</button>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" id="search-inp" placeholder="Buscar por proveedor o número..." oninput="render()">
+    </div>
+    <div class="filter-btns">
+      <button class="fbtn active" onclick="setFilter('todas',this)">Todas</button>
+      <button class="fbtn f-verde" onclick="setFilter('verde',this)">Verde</button>
+      <button class="fbtn f-amarillo" onclick="setFilter('amarillo',this)">Amarillo</button>
+      <button class="fbtn f-rojo" onclick="setFilter('rojo',this)">Rojo</button>
+      <button class="fbtn f-legal" onclick="setFilter('legalizada',this)">Legalizada</button>
+    </div>
+    <button class="new-btn" id="new-btn" onclick="openModal()" style="display:none">+ Nueva Factura</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Estado</th><th>Tipo</th><th>Número</th><th>Proveedor</th>
+          <th>Fecha llegada</th><th>Fecha cierre</th><th>Días en tránsito</th>
+          <th>Fecha legalización</th><th id="col-actions"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <hr class="section-sep">
+  <div class="section-title2">Promedio de días de legalización por mes</div>
+  <div class="avg-summary" id="avg-summary-cards"></div>
+  <div class="avg-chart-wrap">
+    <div class="avg-legend">
+      <div class="avg-leg-item"><div class="avg-leg-sq" style="background:#4ade80"></div>A tiempo (&le;1 día)</div>
+      <div class="avg-leg-item"><div class="avg-leg-sq" style="background:#fbbf24"></div>En atención (2 días)</div>
+      <div class="avg-leg-item"><div class="avg-leg-sq" style="background:#f87171"></div>Fuera de plazo (&gt;2 días)</div>
+    </div>
+    <div style="position:relative;width:100%;height:260px">
+      <canvas id="avgChart" role="img" aria-label="Promedio de días de legalización por mes"></canvas>
+    </div>
+  </div>
+  <div class="avg-table-wrap">
+    <table class="avg-table">
+      <thead>
+        <tr><th>Mes</th><th>Facturas legalizadas</th><th>Promedio días</th><th>Mínimo</th><th>Máximo</th><th>Estado</th></tr>
+      </thead>
+      <tbody id="avg-tbody"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="login-modal" style="display:none">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Acceso editor</div>
+      <button class="close-btn" onclick="closeLoginModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="pw-icon">&#128274;</div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="pw-input" placeholder="Ingresa la contraseña" onkeydown="if(event.key==='Enter')checkPassword()">
+      </div>
+      <div class="error-msg" id="pw-error">Contraseña incorrecta. Intenta de nuevo.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeLoginModal()">Cancelar</button>
+      <button class="btn-save" onclick="checkPassword()">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="factura-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nueva Factura</div>
+      <button class="close-btn" onclick="closeFacturaModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Tipo de documento</label>
+        <select id="f-tipo"><option>FACTURA</option><option>REMISIÓN</option></select></div>
+      <div class="field"><label>Número</label>
+        <input type="text" id="f-num" placeholder="Ej: 2589"></div>
+      <div class="field"><label>Proveedor</label>
+        <input type="text" id="f-prov" placeholder="Nombre del proveedor"></div>
+      <div class="field"><label>Fecha de llegada</label>
+        <input type="date" id="f-llegada"></div>
+      <div class="field"><label>Fecha de cierre estimada</label>
+        <input type="date" id="f-cierre"></div>
+      <div class="field"><label>Fecha de legalización <span style="color:#475569;font-weight:400">(opcional)</span></label>
+        <input type="date" id="f-legal"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeFacturaModal()">Cancelar</button>
+      <button class="btn-save" id="btn-save-factura" onclick="saveFactura()">Agregar Factura</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ============================================================
+// CONTRASEÑA EDITOR
+const EDITOR_PASSWORD = 'almacen2026';
+// ============================================================
+
+const firebaseApp = initializeApp({
+  apiKey: "AIzaSyBZMtRnozVRy5mnQriqBAK04ay4WvfJJOo",
+  authDomain: "almacen-facturas.firebaseapp.com",
+  projectId: "almacen-facturas",
+  storageBucket: "almacen-facturas.firebasestorage.app",
+  messagingSenderId: "729061483252",
+  appId: "1:729061483252:web:1c9f6982e232fef80bf4a1"
+});
+
+const db = getFirestore(firebaseApp);
+const colRef = collection(db, 'facturas');
+
+let facturas = [];
+let filterState = 'todas';
+let currentRole = 'viewer';
+let editingId = null;
+let forcedViewer = false;
+let avgChartInstance = null;
+
+function setSyncDot(state) {
+  const d = document.getElementById('sync-dot');
+  d.className = 'sync-dot ' + state;
+  d.title = {ok:'Conectado a la nube',sync:'Sincronizando...',err:'Error de conexión'}[state];
+}
+
+function hideLoading() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app-content').style.display = 'block';
+}
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color || '#22c55e';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Escucha en tiempo real — se actualiza en todos los PCs automáticamente
+const q = query(colRef, orderBy('creadoEn', 'desc'));
+onSnapshot(q, (snapshot) => {
+  facturas = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+  setSyncDot('ok');
+  hideLoading();
+  render();
+  renderAvg();
+}, (err) => {
+  console.error(err);
+  setSyncDot('err');
+  document.getElementById('loading-msg').textContent = 'Error de conexión. Verifica tu internet.';
+});
+
+async function fsAdd(entry) {
+  setSyncDot('sync');
+  try { entry.creadoEn = Date.now(); await addDoc(colRef, entry); setSyncDot('ok'); }
+  catch(e) { setSyncDot('err'); showToast('Error al guardar', '#ef4444'); }
+}
+
+async function fsUpdate(fid, entry) {
+  setSyncDot('sync');
+  try { await updateDoc(doc(db,'facturas',fid), entry); setSyncDot('ok'); }
+  catch(e) { setSyncDot('err'); showToast('Error al actualizar', '#ef4444'); }
+}
+
+async function fsDelete(fid) {
+  setSyncDot('sync');
+  try { await deleteDoc(doc(db,'facturas',fid)); setSyncDot('ok'); }
+  catch(e) { setSyncDot('err'); showToast('Error al eliminar', '#ef4444'); }
+}
+
+function daysTransit(f) {
+  if (f.legalizacion) return 0;
+  const d = new Date(f.llegada + 'T00:00:00');
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.floor((now - d) / 86400000);
+}
+
+function getStatus(f) {
+  if (f.legalizacion) return 'legalizada';
+  const d = daysTransit(f);
+  if (d <= 1) return 'verde';
+  if (d === 2) return 'amarillo';
+  return 'rojo';
+}
+
+function statusLabel(s) { return {verde:'A TIEMPO',amarillo:'ATENCIÓN',rojo:'VENCIDA',legalizada:'LEGALIZADA'}[s]; }
+function statusClass(s) { return {verde:'st-verde',amarillo:'st-amarillo',rojo:'st-rojo',legalizada:'st-legal'}[s]; }
+function barColor(d) { if(d<=1)return'#22c55e';if(d===2)return'#f59e0b';if(d===3)return'#f97316';return'#ef4444'; }
+
+function applyRole() {
+  const isEditor = currentRole === 'editor';
+  const pill = document.getElementById('role-pill');
+  const lockBtn = document.getElementById('lock-btn');
+  pill.textContent = isEditor ? 'Editor' : 'Visualizador';
+  pill.className = 'rpill ' + (isEditor ? 'rpill-editor' : 'rpill-viewer');
+  lockBtn.textContent = isEditor ? 'Cerrar sesión' : 'Iniciar sesión';
+  document.getElementById('new-btn').style.display = isEditor ? 'block' : 'none';
+  document.getElementById('viewer-banner').style.display = isEditor ? 'none' : 'flex';
+  document.getElementById('link-bar').style.display = isEditor ? 'flex' : 'none';
+  document.getElementById('col-actions').textContent = isEditor ? 'Acciones' : '';
+  if (forcedViewer) {
+    lockBtn.style.display = 'none';
+    const vb = document.querySelector('.viewer-banner button');
+    if (vb) vb.style.display = 'none';
+  }
+}
+
+window.handleLockBtn = function() {
+  if (currentRole === 'editor') { currentRole = 'viewer'; applyRole(); render(); showToast('Sesión cerrada'); }
+  else openLoginModal();
+};
+
+window.openLoginModal = function() {
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  document.getElementById('login-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+};
+
+window.closeLoginModal = function() { document.getElementById('login-modal').style.display = 'none'; };
+
+window.checkPassword = function() {
+  if (document.getElementById('pw-input').value === EDITOR_PASSWORD) {
+    currentRole = 'editor'; applyRole(); render();
+    closeLoginModal(); showToast('Bienvenido, editor');
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+};
+
+function updateKPIs() {
+  document.getElementById('k-total').textContent = facturas.length;
+  document.getElementById('k-verde').textContent = facturas.filter(f => getStatus(f)==='verde').length;
+  document.getElementById('k-amarillo').textContent = facturas.filter(f => getStatus(f)==='amarillo').length;
+  document.getElementById('k-rojo').textContent = facturas.filter(f => getStatus(f)==='rojo').length;
+  document.getElementById('k-legal').textContent = facturas.filter(f => getStatus(f)==='legalizada').length;
+  const g = {1:0,2:0,3:0,4:0};
+  facturas.filter(f => !f.legalizacion).forEach(f => {
+    const d = daysTransit(f);
+    if(d<=1)g[1]++;else if(d===2)g[2]++;else if(d===3)g[3]++;else g[4]++;
+  });
+  const total = g[1]+g[2]+g[3]+g[4] || 1;
+  const seg = document.getElementById('transit-seg');
+  seg.innerHTML = '';
+  [{k:1,c:'seg-green',l:'Día 1'},{k:2,c:'seg-yellow',l:'Día 2'},{k:3,c:'seg-orange',l:'Día 3'},{k:4,c:'seg-red',l:'Día 4+'}]
+    .forEach(s => {
+      if (g[s.k] > 0) {
+        const e = document.createElement('div');
+        e.className = 'seg '+s.c; e.style.flex = g[s.k]/total;
+        e.textContent = s.l+' ('+g[s.k]+')'; seg.appendChild(e);
+      }
+    });
+}
+
+window.render = function() {
+  const q2 = document.getElementById('search-inp').value.toLowerCase();
+  const list = facturas.filter(f => {
+    if (filterState !== 'todas' && getStatus(f) !== filterState) return false;
+    if (q2 && !f.proveedor.toLowerCase().includes(q2) && !f.numero.toLowerCase().includes(q2)) return false;
+    return true;
+  });
+  updateKPIs();
+  const isEditor = currentRole === 'editor';
+  document.getElementById('col-actions').textContent = isEditor ? 'Acciones' : '';
+  const tb = document.getElementById('tbody');
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">No hay facturas que mostrar</td></tr>'; return; }
+  tb.innerHTML = list.map(f => {
+    const st = getStatus(f);
+    const d = daysTransit(f);
+    const pct = Math.min(d/5*100,100);
+    const bc = barColor(d);
+    const daysDisplay = st==='legalizada' ? '—'
+      : `<div class="days-bar"><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="days-num" style="color:${bc}">${d}d</span></div>`;
+    const legalDisplay = f.legalizacion
+      ? `<span style="color:#60a5fa;font-size:12px">${f.legalizacion}</span>`
+      : '<span style="color:#475569;font-size:12px">Pendiente</span>';
+    const fid = f.firestoreId;
+    const actions = isEditor
+      ? `<td style="white-space:nowrap">
+          ${st!=='legalizada'?`<button class="action-btn legal-btn" onclick="legalizarF('${fid}')">Legalizar</button>`:''}
+          <button class="action-btn" style="margin-left:4px" onclick="editF('${fid}')">Editar</button>
+          <button class="action-btn del-btn" style="margin-left:4px" onclick="deleteF('${fid}')">Eliminar</button>
+        </td>`
+      : '<td></td>';
+    return `<tr>
+      <td><span class="badge ${statusClass(st)}"><span class="badge-dot"></span>${statusLabel(st)}</span></td>
+      <td><span class="tipo-badge">${f.tipo}</span></td>
+      <td style="font-weight:700">${f.numero}</td>
+      <td style="font-weight:500;color:#f1f5f9">${f.proveedor}</td>
+      <td>${f.llegada||'—'}</td><td>${f.cierre||'—'}</td>
+      <td>${daysDisplay}</td><td>${legalDisplay}</td>${actions}
+    </tr>`;
+  }).join('');
+};
+
+window.setFilter = function(f, el) {
+  filterState = f;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active'); render();
+};
+
+window.openModal = function(f) {
+  editingId = f ? f.firestoreId : null;
+  document.getElementById('modal-title').textContent = f ? 'Editar Factura' : 'Nueva Factura';
+  document.getElementById('f-tipo').value = f ? f.tipo : 'FACTURA';
+  document.getElementById('f-num').value = f ? f.numero : '';
+  document.getElementById('f-prov').value = f ? f.proveedor : '';
+  document.getElementById('f-llegada').value = f ? f.llegada : '';
+  document.getElementById('f-cierre').value = f ? f.cierre : '';
+  document.getElementById('f-legal').value = f ? f.legalizacion : '';
+  document.getElementById('btn-save-factura').textContent = f ? 'Guardar cambios' : 'Agregar Factura';
+  document.getElementById('factura-modal').style.display = 'flex';
+};
+
+window.closeFacturaModal = function() { document.getElementById('factura-modal').style.display = 'none'; editingId = null; };
+
+window.saveFactura = async function() {
+  const num = document.getElementById('f-num').value.trim();
+  const prov = document.getElementById('f-prov').value.trim();
+  const llegada = document.getElementById('f-llegada').value;
+  const cierre = document.getElementById('f-cierre').value;
+  if (!num||!prov||!llegada||!cierre) { showToast('Completa todos los campos obligatorios','#ef4444'); return; }
+  const entry = {
+    tipo: document.getElementById('f-tipo').value,
+    numero: num, proveedor: prov, llegada, cierre,
+    legalizacion: document.getElementById('f-legal').value || ''
+  };
+  if (editingId) await fsUpdate(editingId, entry);
+  else await fsAdd(entry);
+  closeFacturaModal();
+  showToast(editingId ? 'Factura actualizada' : 'Factura agregada');
+};
+
+window.legalizarF = async function(fid) {
+  const hoy = new Date().toISOString().split('T')[0];
+  await fsUpdate(fid, { legalizacion: hoy });
+  showToast('Factura legalizada el ' + hoy);
+};
+
+window.editF = function(fid) { const f = facturas.find(x => x.firestoreId === fid); if(f) openModal(f); };
+
+window.deleteF = async function(fid) {
+  if (!confirm('¿Eliminar esta factura?')) return;
+  await fsDelete(fid);
+  showToast('Factura eliminada','#f87171');
+};
+
+window.copyLink = function() {
+  const url = window.location.href.split('?')[0] + '?role=viewer';
+  document.getElementById('share-link').value = url;
+  try { navigator.clipboard.writeText(url); } catch(e) {}
+  showToast('Enlace copiado al portapapeles');
+};
+
+// --- Promedios por mes ---
+function daysBetween(a,b) {
+  return Math.round(Math.abs((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000));
+}
+function mesLabel(ym) {
+  const [y,m] = ym.split('-');
+  return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(m)-1]+' '+y;
+}
+function avgColor(v) { if(v<=1)return'#4ade80';if(v<=2)return'#fbbf24';return'#f87171'; }
+
+window.renderAvg = function() {
+  const leg = facturas.filter(f => f.legalizacion && f.llegada);
+  const porMes = {};
+  leg.forEach(f => {
+    const ym = f.legalizacion.slice(0,7);
+    if (!porMes[ym]) porMes[ym] = [];
+    porMes[ym].push(daysBetween(f.llegada, f.legalizacion));
+  });
+  const meses = Object.keys(porMes).sort();
+  const promedios = meses.map(m => {
+    const vals = porMes[m];
+    const avg = parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1));
+    return { mes:m, avg, min:Math.min(...vals), max:Math.max(...vals), count:vals.length };
+  });
+  const allDays = leg.map(f => daysBetween(f.llegada,f.legalizacion));
+  const gAvg = allDays.length ? parseFloat((allDays.reduce((a,b)=>a+b,0)/allDays.length).toFixed(1)) : 0;
+  const gMin = allDays.length ? Math.min(...allDays) : 0;
+  const gMax = allDays.length ? Math.max(...allDays) : 0;
+
+  document.getElementById('avg-summary-cards').innerHTML = `
+    <div class="avg-card"><div class="avg-card-label">Promedio general</div><div class="avg-card-val" style="color:${avgColor(gAvg)}">${gAvg}d</div><div class="avg-card-sub">${leg.length} facturas legalizadas</div></div>
+    <div class="avg-card"><div class="avg-card-label">Menor tiempo</div><div class="avg-card-val" style="color:#4ade80">${gMin}d</div><div class="avg-card-sub">mínimo registrado</div></div>
+    <div class="avg-card"><div class="avg-card-label">Mayor tiempo</div><div class="avg-card-val" style="color:#f87171">${gMax}d</div><div class="avg-card-sub">máximo registrado</div></div>
+    <div class="avg-card"><div class="avg-card-label">Meses con datos</div><div class="avg-card-val">${meses.length}</div><div class="avg-card-sub">meses registrados</div></div>`;
+
+  const maxAvg = Math.max(...promedios.map(p=>p.avg),1);
+  const tb2 = document.getElementById('avg-tbody');
+  if (!promedios.length) {
+    tb2.innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:#475569;font-size:13px">No hay facturas legalizadas aún</td></tr>';
+  } else {
+    tb2.innerHTML = promedios.map(p => {
+      const cls = p.avg<=1?'apill apill-ok':p.avg<=2?'apill apill-warn':'apill apill-bad';
+      const lbl = p.avg<=1?'A tiempo':p.avg<=2?'En atención':'Fuera de plazo';
+      const pct = Math.round(p.avg/maxAvg*100);
+      return `<tr>
+        <td style="font-weight:600">${mesLabel(p.mes)}</td>
+        <td style="color:#94a3b8">${p.count}</td>
+        <td><div class="abar-row"><div class="abar-track"><div class="abar-fill" style="width:${pct}%;background:${avgColor(p.avg)}"></div></div><span style="font-weight:600;color:${avgColor(p.avg)}">${p.avg}d</span></div></td>
+        <td style="color:#94a3b8">${p.min}d</td>
+        <td style="color:#94a3b8">${p.max}d</td>
+        <td><span class="${cls}">${lbl}</span></td>
+      </tr>`;
+    }).join('');
+  }
+  if (!window.Chart) return;
+  if (avgChartInstance) { avgChartInstance.destroy(); avgChartInstance = null; }
+  if (!promedios.length) return;
+  avgChartInstance = new window.Chart(document.getElementById('avgChart'), {
+    type:'bar',
+    data:{ labels:meses.map(mesLabel), datasets:[{ label:'Días promedio', data:promedios.map(p=>p.avg), backgroundColor:promedios.map(p=>avgColor(p.avg)), borderRadius:6, borderSkipped:false }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>` ${ctx.parsed.y}d promedio · ${promedios[ctx.dataIndex].count} factura(s)` } } },
+      scales:{
+        x:{ ticks:{color:'#94a3b8',font:{size:11},autoSkip:false,maxRotation:30}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y:{ beginAtZero:true, ticks:{color:'#94a3b8',font:{size:11},callback:v=>v+'d'}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+};
+
+// Inicio
+const params = new URLSearchParams(window.location.search);
+forcedViewer = params.get('role') === 'viewer';
+applyRole();
+if (!forcedViewer) openLoginModal();
+</script>
+</body>
+</html>
